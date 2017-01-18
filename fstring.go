@@ -29,7 +29,7 @@ func fromString(s string) FString {
 }
 
 func (f FString) cat(x FString) FString {
-	if f.realLen()+x.realLen() > smallStringThreshold {
+	if f.realLen()+x.realLen() < smallStringThreshold {
 		start := f.realLen()
 		out := [16]uint8{}
 		raw := x.toRaw()

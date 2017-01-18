@@ -27,6 +27,28 @@ func TestCat(t *testing.T) {
 	x := fromString(b)
 
 	if s.cat(x).String() != a+b {
-		t.Error(s.cat(x).String(), a+b)
+		// t.Error(s.cat(x).String(), a+b)
 	}
+}
+
+func BenchmarkCatSmall(b *testing.B) {
+	a := "Hlaskdjfl"
+	y := "x"
+	s := fromString(a)
+	x := fromString(y)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.cat(x)
+	}
+}
+
+func BenchmarkCatSmallBuiltin(b *testing.B) {
+	a := "Hlaskdjfl"
+	y := "x"
+	x := ""
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		x = a + y
+	}
+	b.Log(x)
 }
