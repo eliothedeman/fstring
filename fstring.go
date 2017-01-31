@@ -3,96 +3,87 @@ package fstring
 import "unsafe"
 
 const (
-	lenSize              = 64
-	flagBits             = 8
-	lenMask              = ((1 << lenSize) - 1) >> flagBits
-	flagsMask            = 0 ^ lenMask
-	smallStringOptomized = 1
-	smallStringThreshold = 15
+	pointerSize     = 8
+	smallDataSize   = (pointerSize * 2) - 1
+	smallStringFlag = 1 << 7
+	lenMask         = 0xFF >> 4
 )
 
-// FString is a faster string implimentation.
-// Uses a small string optomization.
-type FString struct {
-	str unsafe.Pointer
-	len int
+type stringStructSmall struct {
+	str   [smallDataSize]byte
+	flags byte
 }
 
-func fromString(s string) FString {
-	if len(s) < smallStringThreshold {
-		x := *(*rawFString)(unsafe.Pointer(&s))
-		f := *(*FString)(unsafe.Pointer(&x))
-		f.setFlag(smallStringOptomized)
-		return f
-	}
-	return *(*FString)(unsafe.Pointer(&s))
-}
-
-func (f FString) cat(x FString) FString {
-	if f.realLen()+x.realLen() < smallStringThreshold {
-		start := f.realLen()
-		out := [16]uint8{}
-		raw := x.toRaw()
-		for i := 0; i < x.realLen(); i++ {
-			out[i+start] = raw[i]
-		}
-
-		return *(*FString)(unsafe.Pointer(&raw))
-	}
-
-	return fromString(f.String() + x.String())
-}
-
-func (f *FString) hasFlag(flag uint8) bool {
-	return (f.flags() & flag) > 0
-}
-func (f *FString) setFlag(flag uint8) {
-	f.len = (f.len | int(flag))
-}
-
-func (f *FString) realLen() int {
-
-	return f.len & lenMask
-}
-
-func (f FString) String() string {
-	var str unsafe.Pointer
-	var l int
-	if f.hasFlag(smallStringOptomized) {
-		str = unsafe.Pointer(&f)
-		l = f.realLen()
+func fromString(s string) stringStructSmall {
+	b := []byte(s)
+	l := len(b)
+	var x stringStructSmall
+	if l <= smallDataSize {
+		copy(x.str[:], b)
+		x.flags = setSmallStringFlag(toLen(l))
 	} else {
-		str = f.str
-		l = f.realLen()
+		x = *(*stringStructSmall)(unsafe.Pointer(&s))
 	}
 
-	y := FString{
-		str: str,
-		len: l,
+	return x
+
+}
+
+func eq(a, b stringStructSmall) bool {
+	if isSmallStringSet(a.flags) {
+		return a == b
 	}
 
-	return *(*string)(unsafe.Pointer(&y))
+	return toString(a) == toString(b)
 }
 
-func (f *FString) flags() uint8 {
-	flags := uint64(f.len & flagsMask)
-
-	return uint8(flags >> (lenSize - flagBits))
+func eqs(a, b string) bool {
+	return a == b
 }
 
-func (f *FString) toRaw() *rawFString {
-	return (*rawFString)(unsafe.Pointer(f))
+func toString(s stringStructSmall) string {
+	if isSmallStringSet(s.flags) {
+		return string(s.str[:lenInFlags(s.flags)])
+	}
+
+	return *(*string)(unsafe.Pointer(&struct {
+		p unsafe.Pointer
+		l int
+	}{
+		p: unsafe.Pointer(&s.str[0]),
+		l: getLargeLen(&s),
+	}))
+
 }
 
-type rawFString [16]byte
-
-func (r *rawFString) len() int {
-	x := *(*int)(unsafe.Pointer(&r[8]))
-
-	// take off the high 4 bits
-	return x & lenMask
+func getLargeLen(s *stringStructSmall) int {
+	return *(*int)(unsafe.Pointer(&s.str[pointerSize]))
 }
 
-func (r *rawFString) str() unsafe.Pointer {
-	return unsafe.Pointer(&r[0])
+func canBeSmallString(size int) bool {
+	return size <= smallDataSize
+}
+
+func setSmallStringFlag(flags byte) byte {
+	return flags | smallStringFlag
+}
+
+func isSmallStringSet(flags byte) bool {
+	return (flags & smallStringFlag) > 0
+}
+
+func stringStructSmallOf(sp *string) *stringStructSmall {
+	return (*stringStructSmall)(unsafe.Pointer(sp))
+}
+
+func isSmallString(s *string) bool {
+	return isSmallStringSet(stringStructSmallOf(s).flags)
+}
+
+func lenInFlags(b byte) int {
+	return int(b & lenMask)
+}
+
+func toLen(i int) byte {
+	return byte(i)
 }

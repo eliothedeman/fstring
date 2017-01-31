@@ -1,54 +1,85 @@
 package fstring
 
-import "testing"
+import (
+	"log"
+	"testing"
+)
 
-func TestRawLength(t *testing.T) {
-	s := FString{
-		len: 10,
-	}
-
-	if s.toRaw().len() != 10 {
-		t.Error(s.toRaw().len())
-	}
+func init() {
+	log.SetFlags(log.Llongfile)
 }
 
-func TestFromString(t *testing.T) {
-	s := fromString("Hello world")
-
-	if s.String() != "Hello world" {
-		t.Fail()
-	}
+func TestFlagLen(t *testing.T) {
+	t.Run("smallEnough", func(t *testing.T) {
+		f := toLen(10)
+		if lenInFlags(f) != 10 {
+			t.Error(lenInFlags(f))
+		}
+	})
+	t.Run("tooBig", func(t *testing.T) {
+		f := toLen(255)
+		if lenInFlags(f) == 255 {
+			t.Error(lenInFlags(f))
+		}
+	})
 }
 
-func TestCat(t *testing.T) {
-	a := "Hlaskdjfl"
-	b := "x"
-	s := fromString(a)
-	x := fromString(b)
+func TestToFromString(t *testing.T) {
+	t.Run("small", func(t *testing.T) {
+		s := fromString("hello")
+		if toString(s) != "hello" {
+			t.Error(len(toString(s)))
+		}
 
-	if s.cat(x).String() != a+b {
-		// t.Error(s.cat(x).String(), a+b)
-	}
+	})
 }
 
-func BenchmarkCatSmall(b *testing.B) {
-	a := "Hlaskdjfl"
-	y := "x"
-	s := fromString(a)
-	x := fromString(y)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		s.cat(x)
-	}
-}
+func BenchmarkEq(b *testing.B) {
 
-func BenchmarkCatSmallBuiltin(b *testing.B) {
-	a := "Hlaskdjfl"
-	y := "x"
-	x := ""
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		x = a + y
-	}
-	b.Log(x)
+	b.Run("smallTrue", func(b *testing.B) {
+		x := fromString("world")
+		y := fromString("world")
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			eq(x, y)
+		}
+	})
+	b.Run("smallTrueBuiltin", func(b *testing.B) {
+		x := "world"
+		y := "world"
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			eqs(x, y)
+		}
+	})
+	b.Run("smallFalse", func(b *testing.B) {
+		x := fromString("rld")
+		y := fromString("world")
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			eq(x, y)
+		}
+	})
+
+	b.Run("bigTrue", func(b *testing.B) {
+		x := fromString("abcdefghijklmnopqrstuvwxyz")
+		y := fromString("abcdefghijklmnopqrstuvwxyz")
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			eq(x, y)
+		}
+	})
+	b.Run("bigFalse", func(b *testing.B) {
+		x := fromString("abcdefghijklmnopqrstu4vwxy")
+		y := fromString("abcdefghijklmnopqrstuvwxyz")
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			eq(x, y)
+		}
+	})
 }
