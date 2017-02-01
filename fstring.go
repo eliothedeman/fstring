@@ -1,6 +1,9 @@
 package fstring
 
-import "unsafe"
+import (
+	"log"
+	"unsafe"
+)
 
 const (
 	pointerSize     = 8
@@ -31,9 +34,22 @@ func fromString(s string) stringStructSmall {
 
 func eq(a, b stringStructSmall) bool {
 	if isSmallStringSet(a.flags) {
-		return a == b
+		ua := *(*uint64)(unsafe.Pointer(&a))
+		ub := *(*uint64)(unsafe.Pointer(&b))
+		if ua != ub {
+			return false
+		}
+
+		ua = *(*uint64)(unsafe.Pointer(&a.str[8]))
+		ub = *(*uint64)(unsafe.Pointer(&b.str[8]))
+
+		return ua == ub
+
 	}
 
+	ax := toString(a)
+	bx := toString(b)
+	log.Println(ax, bx)
 	return toString(a) == toString(b)
 }
 
@@ -45,15 +61,15 @@ func toString(s stringStructSmall) string {
 	if isSmallStringSet(s.flags) {
 		return string(s.str[:lenInFlags(s.flags)])
 	}
+	log.Println(s)
 
 	return *(*string)(unsafe.Pointer(&struct {
 		p unsafe.Pointer
 		l int
 	}{
-		p: unsafe.Pointer(&s.str[0]),
+		p: unsafe.Pointer(&s.str),
 		l: getLargeLen(&s),
 	}))
-
 }
 
 func getLargeLen(s *stringStructSmall) int {
