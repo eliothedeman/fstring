@@ -37,22 +37,14 @@ func TestToFromString(t *testing.T) {
 }
 
 func TestLargeStringEq(t *testing.T) {
-	a := fromString("abcdefghijklmnopqrstuvwxyz")
-	b := fromString("abcdefghijklmnopqrstuvwxyz")
+	str := "abcdefghijklmnopqrstuvwxyz"
+	a := fromString(str)
+	b := fromString(str)
 
 	if !eq(a, b) {
 		t.Fail()
 	}
 
-}
-
-func genSmallStrings(n, l int) []stringStructSmall {
-	x := make([]stringStructSmall, n)
-	for i := range x {
-		x[i] = fromString(randutil.AlphaString(l))
-	}
-
-	return x
 }
 
 func genStrings(n, l int) []string {
@@ -64,13 +56,10 @@ func genStrings(n, l int) []string {
 	return x
 }
 
-func copySmallStrings(s []stringStructSmall) []stringStructSmall {
+func copySmallStrings(s []string) []stringStructSmall {
 	x := make([]stringStructSmall, len(s))
 	for i := range x {
-		y := []byte(toString(s[i]))
-		z := make([]byte, len(y))
-		copy(z, y)
-		x[i] = fromString(string(z))
+		x[i] = fromString(s[i])
 	}
 	return x
 }
@@ -85,10 +74,10 @@ func copyStrings(s []string) []string {
 
 func BenchmarkEq(b *testing.B) {
 	n := 1000000
-	small := genSmallStrings(n, 15)
 	old := genStrings(n, 15)
+	small := copySmallStrings(old)
 	old2 := copyStrings(old)
-	small2 := copySmallStrings(small)
+	small2 := copySmallStrings(old)
 
 	b.Run("smallFalse", func(b *testing.B) {
 		b.ResetTimer()
@@ -123,10 +112,10 @@ func BenchmarkEq(b *testing.B) {
 		}
 	})
 
-	small = genSmallStrings(n, 50)
 	old = genStrings(n, 50)
+	small = copySmallStrings(old)
 	old2 = copyStrings(old)
-	small2 = copySmallStrings(small)
+	small2 = copySmallStrings(old)
 
 	b.Run("largeFalse", func(b *testing.B) {
 		b.ResetTimer()
